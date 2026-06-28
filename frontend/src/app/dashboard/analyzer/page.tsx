@@ -51,6 +51,7 @@ export default function AnalyzerPage() {
   };
 
   const handleAnalyze = async (id: string) => {
+    console.log("Analyze ID:", id);
     setAnalyzing(id);
     try {
       const { data } = await resumeAPI.analyze(id);
