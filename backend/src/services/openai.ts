@@ -1,4 +1,67 @@
 import OpenAI from 'openai';
+export const analyzeResume = async (resumeText: string): Promise<AnalysisResult> => {
+  try {
+    if (!process.env.OPENAI_API_KEY) {
+      return getMockAnalysis(resumeText);
+    }
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are an ATS Resume Analyzer.
+Return ONLY valid JSON.
+{
+ "atsScore":80,
+ "healthScore":80,
+ "interviewReadiness":80,
+ "strengths":[],
+ "weaknesses":[],
+ "improvements":[],
+ "missingKeywords":[],
+ "formattingIssues":[],
+ "sections":{},
+ "summary":""
+}`
+        },
+        {
+          role: "user",
+          content: resumeText
+        }
+      ],
+      response_format: {
+        type: "json_object"
+      }
+    });
+
+    console.log("OPENAI RESPONSE:");
+    console.log(response);
+
+    return JSON.parse(
+      response.choices[0].message.content ?? "{}"
+    );
+
+  } catch (err: any) {
+
+    console.error("========== OPENAI ERROR ==========");
+    console.error(err);
+
+    if (err.status)
+      console.error("STATUS:", err.status);
+
+    if (err.code)
+      console.error("CODE:", err.code);
+
+    if (err.message)
+      console.error("MESSAGE:", err.message);
+
+    if (err.error)
+      console.error(err.error);
+
+    throw err;
+  }
+};
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -306,3 +369,4 @@ function getMockLinkedInAnalysis() {
     improvements: ['Add portfolio projects', 'Get recommendations', 'Engage with industry content'],
   };
 }
+ 
