@@ -1,3 +1,5 @@
+import nodemailer from "nodemailer";
+
 const transporter = nodemailer.createTransport({
   service: "gmail",
   host: "smtp.gmail.com",
@@ -10,7 +12,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Verify SMTP connection
-transporter.verify((error) => {
+transporter.verify((error: Error | null) => {
   if (error) {
     console.error("❌ SMTP Error:", error);
   } else {
