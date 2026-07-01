@@ -2,12 +2,16 @@ services:
   - type: web
     name: ai-resume-backend
     runtime: node
+    rootDir: backend
     plan: free
+
     buildCommand: npm install && npm run build
     startCommand: npm start
+
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 5000
-    autoDeploy: false
+
+    autoDeploy: true
