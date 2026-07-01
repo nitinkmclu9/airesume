@@ -8,14 +8,6 @@
     "build": "tsc",
     "start": "node dist/server.js"
   },
-  "keywords": [
-    "resume",
-    "ai",
-    "ats",
-    "saas"
-  ],
-  "author": "",
-  "license": "ISC",
   "type": "commonjs",
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -55,6 +47,6 @@
     "@types/uuid": "^10.0.0",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
-    "typescript": "^6.0.3"
+    "typescript": "^5.9.2"
   }
 }
