@@ -124,9 +124,14 @@ router.post('/forgot-password', authLimiter, validate([body('email').isEmail()])
 
     res.json({ success: true, message: 'If email exists, reset link has been sent' });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to process request' });
-  }
-});
+  console.error("Forgot Password Error:", error);
+
+  res.status(500).json({
+    success: false,
+    message: "Failed to process request",
+    error: (error as Error).message,
+  });
+}
 
 router.post(
   '/reset-password/:token',
