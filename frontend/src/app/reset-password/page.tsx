@@ -28,15 +28,14 @@ export default function ResetPasswordPage() {
       setLoading(true);
 
       const res = await fetch(
-        "https://airesume-1-110s.onrender.com/api/auth/reset-password",
+         `https://airesume-1-110s.onrender.com/api/auth/reset-password/${token}`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            token,
-            password,
+         body: JSON.stringify({
+              password,
           }),
         }
       );
