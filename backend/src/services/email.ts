@@ -1,34 +1,4 @@
-import nodemailer from "nodemailer";
-
-console.log("SMTP_HOST:", process.env.SMTP_HOST);
-console.log("SMTP_PORT:", process.env.SMTP_PORT);
-console.log("SMTP_USER:", process.env.SMTP_USER);
-console.log("SMTP_PASS:", process.env.SMTP_PASS ? "Loaded ✅" : "Missing ❌");
-console.log("EMAIL_FROM:", process.env.EMAIL_FROM);
-
-const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
-});
-
-// Verify SMTP connection
-(async () => {
-  try {
-    console.log("📧 Sending password reset email...");
-    await transporter.verify();
-    console.log("✅ SMTP Server is ready");
-  } catch (error) {
-    console.error("❌ SMTP Verify Error:", error);
-  }
-})();
+const BREVO_API = "https://api.brevo.com/v3/smtp/email";
 
 export const sendVerificationEmail = async (
   email: string,
@@ -37,31 +7,40 @@ export const sendVerificationEmail = async (
 ): Promise<void> => {
   const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
 
-  try {
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
-      to: email,
+  const response = await fetch(BREVO_API, {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+      "api-key": process.env.BREVO_API_KEY!,
+    },
+    body: JSON.stringify({
+      sender: {
+        name: "ResumeIQ AI",
+        email: "kumarnitin7970@gmail.com",
+      },
+      to: [
+        {
+          email,
+          name,
+        },
+      ],
       subject: "Verify your ResumeIQ AI account",
-      html: `
-      <div style="font-family:Arial,sans-serif">
+      htmlContent: `
         <h2>Welcome ${name}</h2>
         <p>Please verify your email.</p>
         <a href="${verifyUrl}">Verify Email</a>
-      </div>
       `,
-    });
+    }),
+  });
 
-    console.log(`✅ Verification email sent to ${email}`);
-  } catch (err) {
-    console.error("❌ Verification Email Error:", err);
-    throw err;
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error);
   }
+
+  console.log("✅ Verification email sent");
 };
-console.log("SMTP_HOST:", process.env.SMTP_HOST);
-console.log("SMTP_PORT:", process.env.SMTP_PORT);
-console.log("SMTP_USER:", process.env.SMTP_USER);
-console.log("SMTP_PASS:", process.env.SMTP_PASS ? "Loaded ✅" : "Missing ❌");
-console.log("EMAIL_FROM:", process.env.EMAIL_FROM);
 
 export const sendPasswordResetEmail = async (
   email: string,
@@ -70,16 +49,31 @@ export const sendPasswordResetEmail = async (
 ): Promise<void> => {
   const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
 
-  try {
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
-      to: email,
+  const response = await fetch(BREVO_API, {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+      "api-key": process.env.BREVO_API_KEY!,
+    },
+    body: JSON.stringify({
+      sender: {
+        name: "ResumeIQ AI",
+        email: "kumarnitin7970@gmail.com",
+      },
+      to: [
+        {
+          email,
+          name,
+        },
+      ],
       subject: "Reset your ResumeIQ AI Password",
-      html: `
-      <div style="font-family:Arial,sans-serif">
+      htmlContent: `
         <h2>Password Reset</h2>
-        <p>Hello ${name},</p>
-        <p>Click the button below to reset your password.</p>
+
+        <p>Hello ${name}</p>
+
+        <p>Click below to reset your password.</p>
 
         <a href="${resetUrl}"
         style="background:#4f46e5;color:#fff;padding:12px 20px;text-decoration:none;border-radius:5px;display:inline-block;">
@@ -87,15 +81,14 @@ export const sendPasswordResetEmail = async (
         </a>
 
         <p>This link expires in 1 hour.</p>
-
-        <p>If you didn't request this, ignore this email.</p>
-      </div>
       `,
-    });
+    }),
+  });
 
-    console.log(`✅ Password reset email sent to ${email}`);
-  } catch (err) {
-    console.error("❌ Password Reset Email Error:", err);
-    throw err;
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error);
   }
+
+  console.log("✅ Password reset email sent");
 };
