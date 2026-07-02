@@ -1,5 +1,11 @@
 import nodemailer from "nodemailer";
 
+console.log("SMTP_HOST:", process.env.SMTP_HOST);
+console.log("SMTP_PORT:", process.env.SMTP_PORT);
+console.log("SMTP_USER:", process.env.SMTP_USER);
+console.log("SMTP_PASS:", process.env.SMTP_PASS ? "Loaded ✅" : "Missing ❌");
+console.log("EMAIL_FROM:", process.env.EMAIL_FROM);
+
 const transporter = nodemailer.createTransport({
   host: "smtp-relay.brevo.com",
   port: 587,
@@ -8,16 +14,21 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
 });
 
 // Verify SMTP connection
-transporter.verify((error: Error | null) => {
-  if (error) {
-    console.error("❌ SMTP Error:", error);
-  } else {
+(async () => {
+  try {
+    console.log("📧 Sending password reset email...");
+    await transporter.verify();
     console.log("✅ SMTP Server is ready");
+  } catch (error) {
+    console.error("❌ SMTP Verify Error:", error);
   }
-});
+})();
 
 export const sendVerificationEmail = async (
   email: string,
