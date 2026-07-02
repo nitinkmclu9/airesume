@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useState } from "react";
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const params = useSearchParams();
   const router = useRouter();
 
@@ -28,14 +29,14 @@ export default function ResetPasswordPage() {
       setLoading(true);
 
       const res = await fetch(
-         `https://airesume-1-110s.onrender.com/api/auth/reset-password/${token}`,
+        `https://airesume-1-110s.onrender.com/api/auth/reset-password/${token}`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-         body: JSON.stringify({
-              password,
+          body: JSON.stringify({
+            password,
           }),
         }
       );
@@ -82,12 +83,6 @@ export default function ResetPasswordPage() {
           placeholder="New Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "12px",
-            marginTop: "20px",
-            borderRadius: "5px",
-          }}
         />
 
         <input
@@ -95,31 +90,20 @@ export default function ResetPasswordPage() {
           placeholder="Confirm Password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "12px",
-            marginTop: "15px",
-            borderRadius: "5px",
-          }}
         />
 
-        <button
-          onClick={handleReset}
-          disabled={loading}
-          style={{
-            width: "100%",
-            marginTop: "20px",
-            padding: "12px",
-            background: "#4f46e5",
-            color: "#fff",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer",
-          }}
-        >
+        <button onClick={handleReset} disabled={loading}>
           {loading ? "Resetting..." : "Reset Password"}
         </button>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ResetPasswordForm />
+    </Suspense>
   );
 }
