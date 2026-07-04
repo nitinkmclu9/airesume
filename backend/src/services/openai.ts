@@ -58,7 +58,7 @@ const generateJSON = async <T>(systemPrompt: string, userContent: string, temper
     { role: 'system', content: systemPrompt },
     { role: 'user', content: userContent },
   ];
-  const payload = { model: 'llama3-70b-8192', messages, temperature };
+  const payload = { model: 'llama-3.3-70b-versatile', messages, temperature };
   const response = await fetch(GROQ_API_URL, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
