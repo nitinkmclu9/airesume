@@ -32,7 +32,11 @@ router.post(
       const verificationToken = generateVerificationToken();
       const user = await User.create({ name, email, password, verificationToken });
 
-      await sendVerificationEmail(email, name, verificationToken);
+      try {
+        await sendVerificationEmail(email, name, verificationToken);
+      } catch {
+        console.log('Verification email skipped (email service unavailable)');
+      }
 
       const token = generateToken(user);
 

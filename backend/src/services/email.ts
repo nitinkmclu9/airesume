@@ -17,7 +17,7 @@ export const sendVerificationEmail = async (
     body: JSON.stringify({
       sender: {
         name: "ResumeIQ AI",
-        email: "kumarnitin7970@gmail.com",
+        email: process.env.BREVO_FROM_EMAIL || "kumarnitin7970@gmail.com",
       },
       to: [
         {
@@ -28,8 +28,8 @@ export const sendVerificationEmail = async (
       subject: "Verify your ResumeIQ AI account",
       htmlContent: `
         <h2>Welcome ${name}</h2>
-        <p>Please verify your email.</p>
-        <a href="${verifyUrl}">Verify Email</a>
+        <p>Please verify your email by clicking the link below:</p>
+        <a href="${verifyUrl}" style="background:#4f46e5;color:#fff;padding:12px 20px;text-decoration:none;border-radius:5px;display:inline-block;">Verify Email</a>
       `,
     }),
   });
@@ -59,7 +59,7 @@ export const sendPasswordResetEmail = async (
     body: JSON.stringify({
       sender: {
         name: "ResumeIQ AI",
-        email: "kumarnitin7970@gmail.com",
+        email: process.env.BREVO_FROM_EMAIL || "kumarnitin7970@gmail.com",
       },
       to: [
         {
