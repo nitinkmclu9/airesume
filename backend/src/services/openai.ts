@@ -58,7 +58,7 @@ const generateJSON = async <T>(systemPrompt: string, userContent: string, temper
     { role: 'system', content: systemPrompt },
     { role: 'user', content: userContent },
   ];
-  const payload = { model: 'llama-3.3-70b-versatile', messages, temperature };
+  const payload = { model: 'llama-3.1-8b-instant', messages, temperature };
   const response = await fetch(GROQ_API_URL, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
@@ -90,7 +90,8 @@ export const analyzeResume = async (resumeText: string): Promise<AnalysisResult>
       resumeText,
       0.3
     );
-  } catch {
+  } catch (e) {
+    console.error('analyzeResume error:', (e as Error).message);
     return getMockAnalysis(resumeText);
   }
 };
