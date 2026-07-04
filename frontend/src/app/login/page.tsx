@@ -1,35 +1,43 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://airesume-j8hi.onrender.com/api';
+const HEALTH_URL = API_URL.replace(/\/api$/, '') + '/api/health';
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [coldStart, setColdStart] = useState(false);
+  const [showProgress, setShowProgress] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
-  const warmupDone = useRef(false);
+  const warmupResolve = useRef<(() => void) | null>(null);
+  const [warmupDone, setWarmupDone] = useState(false);
+  const pendingSubmit = useRef(false);
 
-  useEffect(() => {
-    if (warmupDone.current) return;
-    warmupDone.current = true;
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://airesume-j8hi.onrender.com/api';
-    fetch(`${API_URL.replace(/\/api$/, '')}/api/health`, { mode: 'cors' }).catch(() => {});
+  const warmup = useCallback(async () => {
+    if (warmupResolve.current) return;
+    const p = new Promise<void>((resolve) => { warmupResolve.current = resolve; });
+    fetch(HEALTH_URL, { mode: 'cors' })
+      .then(() => setWarmupDone(true))
+      .catch(() => {})
+      .finally(() => warmupResolve.current?.());
+    try { await p; } catch {}
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => { warmup(); }, [warmup]);
+
+  const doLogin = async () => {
     setLoading(true);
-    const timeoutId = setTimeout(() => setColdStart(true), 8000);
     try {
       await login(email, password);
       toast.success('Welcome back!');
@@ -39,8 +47,25 @@ export default function LoginPage() {
       toast.error(error.response?.data?.message || 'Login failed');
     } finally {
       setLoading(false);
-      setColdStart(false);
-      clearTimeout(timeoutId);
+      setShowProgress(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (warmupDone) {
+      doLogin();
+    } else {
+      pendingSubmit.current = true;
+      setShowProgress(true);
+      const poll = setInterval(() => {
+        if (warmupDone) {
+          clearInterval(poll);
+          setShowProgress(false);
+          if (pendingSubmit.current) doLogin();
+        }
+      }, 1000);
+      setTimeout(() => { clearInterval(poll); setShowProgress(false); pendingSubmit.current = false; doLogin(); }, 35000);
     }
   };
 
@@ -81,7 +106,7 @@ export default function LoginPage() {
               <Link href="/forgot-password" className="text-sm text-neutral-400 hover:text-white transition-colors">Forgot password?</Link>
             </div>
             <Button type="submit" className="w-full bg-white text-black hover:bg-neutral-200" disabled={loading}>
-              {loading && coldStart ? 'Server is waking up... (15-30s)' : loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Signing in...' : 'Sign In'}
               {!loading && <ArrowRight className="w-4 h-4" />}
             </Button>
           </form>
@@ -91,6 +116,29 @@ export default function LoginPage() {
           </p>
         </div>
       </motion.div>
+
+      {showProgress && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80" onClick={() => {}} />
+          <div className="relative w-full max-w-sm border border-neutral-800 rounded-2xl bg-neutral-900 p-8 text-center">
+            <Loader2 className="w-10 h-10 text-white animate-spin mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-white mb-2">Waking up server...</h3>
+            <p className="text-sm text-neutral-500 mb-4">
+              The server was asleep. This takes about 15-30 seconds.
+            </p>
+            <div className="w-full bg-neutral-800 rounded-full h-1.5 mb-4 overflow-hidden">
+              <motion.div
+                className="h-full bg-white rounded-full"
+                initial={{ width: '0%' }}
+                animate={{ width: '100%' }}
+                transition={{ duration: 30, ease: 'linear' }}
+              />
+            </div>
+            <p className="text-xs text-neutral-600">You&apos;ll be signed in automatically once ready.</p>
+          </div>
+        </div>
+      )}
+
       <p className="absolute bottom-6 text-xs text-neutral-600">
         Created by NKStech
       </p>
