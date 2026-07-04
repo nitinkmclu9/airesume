@@ -71,8 +71,11 @@ const generateJSON = async <T>(systemPrompt: string, userContent: string, temper
   }
   const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
   const text = data?.choices?.[0]?.message?.content || '{}';
-  return parseJSON<T>(text);
+    const parsed = parseJSON<T>(text);
+    return parsed;
 };
+
+const getGroqApiKey = () => process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY || '';
 
 export const analyzeResume = async (resumeText: string): Promise<AnalysisResult> => {
   if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
@@ -91,8 +94,7 @@ export const analyzeResume = async (resumeText: string): Promise<AnalysisResult>
       0.3
     );
   } catch (e) {
-    console.error('analyzeResume error:', (e as Error).message);
-    return getMockAnalysis(resumeText);
+    return getMockAnalysis(resumeText + ' [ERROR: ' + (e as Error).message + ']');
   }
 };
 
