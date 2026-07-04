@@ -1,6 +1,5 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || '');
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || '';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent';
 
 interface AnalysisResult {
   atsScore: number;
@@ -49,25 +48,35 @@ const parseJSON = <T>(content: string): T => {
   return JSON.parse(cleaned);
 };
 
-const getModel = (systemPrompt: string, temperature = 0.3) => {
-  return genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    systemInstruction: systemPrompt,
-    generationConfig: {
-      responseMimeType: 'application/json',
-      temperature,
-    },
-  });
-};
-
 const generateJSON = async <T>(systemPrompt: string, userContent: string, temperature = 0.3): Promise<T> => {
   if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
     throw new Error('No API key configured');
   }
-  const model = getModel(systemPrompt, temperature);
-  const result = await model.generateContent(userContent);
-  const response = result.response;
-  const text = response.text();
+  const url = `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`;
+  const payload = {
+    contents: [
+      {
+        role: 'user',
+        parts: [{ text: `${systemPrompt}\n\n${userContent}` }],
+      },
+    ],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      temperature,
+    },
+  };
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errBody = await response.text();
+    console.error(`Gemini API error ${response.status}: ${errBody.slice(0, 200)}`);
+    throw new Error(`Gemini API error: ${response.status}`);
+  }
+  const data = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
   return parseJSON<T>(text);
 };
 
