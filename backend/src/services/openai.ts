@@ -40,10 +40,8 @@ interface CoverLetterResult {
   coverLetter: string;
 }
 
-type Message = { role: 'system' | 'user' | 'assistant'; content: string };
-
-const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY || '';
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || '';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent';
 
 const parseJSON = <T>(content: string): T => {
   const cleaned = content.replace(/```json\n?|\n?```/g, '').trim();
@@ -51,31 +49,24 @@ const parseJSON = <T>(content: string): T => {
 };
 
 const generateJSON = async <T>(systemPrompt: string, userContent: string, temperature = 0.3): Promise<T> => {
-  if (!process.env.GROQ_API_KEY && !process.env.OPENAI_API_KEY) {
+  if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
     throw new Error('No API key configured');
   }
-  const messages: Message[] = [
-    { role: 'system', content: systemPrompt },
-    { role: 'user', content: userContent },
-  ];
-  const payload = { model: 'llama-3.1-8b-instant', messages, temperature };
-  const response = await fetch(GROQ_API_URL, {
+  const url = `${GEMINI_URL}?key=${GEMINI_KEY}`;
+  const payload = { contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\n${userContent}` }] }] };
+  const response = await fetch(url, {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
     const errBody = await response.text();
-    console.error(`Groq API error ${response.status}: ${errBody.slice(0, 200)}`);
-    throw new Error(`Groq API error: ${response.status}`);
+    console.error(`Gemini API error ${response.status}: ${errBody.slice(0, 200)}`);
+    throw new Error(`Gemini API error: ${response.status}`);
   }
-  const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-  const text = data?.choices?.[0]?.message?.content || '{}';
-    const parsed = parseJSON<T>(text);
-    return parsed;
+  const data = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+  return parseJSON<T>(data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
 };
-
-const getGroqApiKey = () => process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY || '';
 
 export const analyzeResume = async (resumeText: string): Promise<AnalysisResult> => {
   if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
@@ -93,8 +84,8 @@ export const analyzeResume = async (resumeText: string): Promise<AnalysisResult>
       resumeText,
       0.3
     );
-  } catch (e) {
-    return getMockAnalysis(resumeText + ' [ERROR: ' + (e as Error).message + ']');
+  } catch {
+    return getMockAnalysis(resumeText);
   }
 };
 
