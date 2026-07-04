@@ -1,5 +1,6 @@
 'use client';
-
+import { GoogleLogin } from "@react-oauth/google";
+import axios from "axios";
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -10,8 +11,11 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
+<<<<<<< HEAD
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://airesume-j8hi.onrender.com/api';
 const HEALTH_URL = API_URL.replace(/\/api$/, '') + '/api/health';
+=======
+>>>>>>> d0cb034 (Added Google Login)
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -68,6 +72,25 @@ export default function LoginPage() {
       setTimeout(() => { clearInterval(poll); setShowProgress(false); pendingSubmit.current = false; doLogin(); }, 35000);
     }
   };
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+  try {
+    const res = await axios.post(
+      `${process.env.NEXT_PUBLIC_API_URL}/auth/google`,
+      {
+        credential: credentialResponse.credential,
+      }
+    );
+
+    localStorage.setItem("token", res.data.token);
+
+    toast.success("Logged in successfully!");
+
+    router.push("/dashboard");
+  } catch (error) {
+    toast.error("Google Login Failed");
+    console.error(error);
+  }
+};
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center px-6 relative">
@@ -110,7 +133,23 @@ export default function LoginPage() {
               {!loading && <ArrowRight className="w-4 h-4" />}
             </Button>
           </form>
+<<<<<<< HEAD
           <p className="text-center text-sm text-neutral-500 mt-6">
+=======
+          <div className="my-6 flex items-center">
+  <div className="flex-1 border-t border-gray-700"></div>
+  <span className="px-3 text-sm text-gray-400">OR</span>
+  <div className="flex-1 border-t border-gray-700"></div>
+</div>
+
+<div className="flex justify-center">
+  <GoogleLogin
+    onSuccess={handleGoogleSuccess}
+    onError={() => toast.error("Google Login Failed")}
+  />
+</div>
+          <p className="text-center text-sm text-muted-foreground mt-6">
+>>>>>>> d0cb034 (Added Google Login)
             Don&apos;t have an account?{' '}
             <Link href="/register" className="text-neutral-300 hover:text-white transition-colors">Sign up</Link>
           </p>
