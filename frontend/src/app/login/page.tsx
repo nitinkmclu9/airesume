@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Sparkles, Mail, Lock, User, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,12 +14,22 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [coldStart, setColdStart] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
+  const warmupDone = useRef(false);
+
+  useEffect(() => {
+    if (warmupDone.current) return;
+    warmupDone.current = true;
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://airesume-j8hi.onrender.com/api';
+    fetch(`${API_URL.replace(/\/api$/, '')}/api/health`, { mode: 'cors' }).catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    const timeoutId = setTimeout(() => setColdStart(true), 8000);
     try {
       await login(email, password);
       toast.success('Welcome back!');
@@ -29,58 +39,61 @@ export default function LoginPage() {
       toast.error(error.response?.data?.message || 'Login failed');
     } finally {
       setLoading(false);
+      setColdStart(false);
+      clearTimeout(timeoutId);
     }
   };
 
   return (
-    <div className="min-h-screen gradient-bg flex items-center justify-center px-6">
-      <div className="hero-glow fixed inset-0 pointer-events-none" />
+    <div className="min-h-screen bg-black flex items-center justify-center px-6 relative">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-2xl font-bold">ResumeIQ AI</span>
+          <Link href="/" className="inline-flex items-center justify-center mb-6">
+            <span className="text-3xl font-extrabold tracking-tight text-white">
+              NK<span className="text-neutral-400">Stech</span>
+            </span>
           </Link>
-          <h1 className="text-2xl font-bold">Welcome back</h1>
-          <p className="text-muted-foreground mt-2">Sign in to your account</p>
+          <h1 className="text-2xl font-bold text-white">Welcome back</h1>
+          <p className="text-neutral-500 mt-2">Sign in to your account</p>
         </div>
 
-        <div className="glass rounded-2xl p-8">
+        <div className="border border-neutral-800 rounded-2xl p-8 bg-neutral-900/50">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">Email</label>
+              <label className="text-sm font-medium mb-2 block text-neutral-300">Email</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10" required />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
+                <Input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10 bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500" required />
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">Password</label>
+              <label className="text-sm font-medium mb-2 block text-neutral-300">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" required />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
+                <Input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500" required />
               </div>
             </div>
             <div className="flex justify-end">
-              <Link href="/forgot-password" className="text-sm text-indigo-400 hover:underline">Forgot password?</Link>
+              <Link href="/forgot-password" className="text-sm text-neutral-400 hover:text-white transition-colors">Forgot password?</Link>
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Signing in...' : 'Sign In'}
-              <ArrowRight className="w-4 h-4" />
+            <Button type="submit" className="w-full bg-white text-black hover:bg-neutral-200" disabled={loading}>
+              {loading && coldStart ? 'Server is waking up... (15-30s)' : loading ? 'Signing in...' : 'Sign In'}
+              {!loading && <ArrowRight className="w-4 h-4" />}
             </Button>
           </form>
-          <p className="text-center text-sm text-muted-foreground mt-6">
+          <p className="text-center text-sm text-neutral-500 mt-6">
             Don&apos;t have an account?{' '}
-            <Link href="/register" className="text-indigo-400 hover:underline">Sign up</Link>
+            <Link href="/register" className="text-neutral-300 hover:text-white transition-colors">Sign up</Link>
           </p>
         </div>
       </motion.div>
+      <p className="absolute bottom-6 text-xs text-neutral-600">
+        Created by NKStech
+      </p>
     </div>
   );
 }

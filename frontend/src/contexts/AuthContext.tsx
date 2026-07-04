@@ -29,9 +29,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       const { data } = await authAPI.me();
       setUser(data.user);
-    } catch {
-      Cookies.remove('token');
-      setUser(null);
+    } catch (err: unknown) {
+      const error = err as { response?: { status?: number } };
+      if (error.response?.status === 401) {
+        Cookies.remove('token');
+        setUser(null);
+      }
     }
   };
 
