@@ -1,8 +1,6 @@
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || '');
 
 interface AnalysisResult {
   atsScore: number;
@@ -51,88 +49,83 @@ const parseJSON = <T>(content: string): T => {
   return JSON.parse(cleaned);
 };
 
+const getModel = (systemPrompt: string, temperature = 0.3) => {
+  return genAI.getGenerativeModel({
+    model: 'gemini-1.5-flash',
+    systemInstruction: systemPrompt,
+    generationConfig: {
+      responseMimeType: 'application/json',
+      temperature,
+    },
+  });
+};
+
+const generateJSON = async <T>(systemPrompt: string, userContent: string, temperature = 0.3): Promise<T> => {
+  if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
+    throw new Error('No API key configured');
+  }
+  const model = getModel(systemPrompt, temperature);
+  const result = await model.generateContent(userContent);
+  const response = result.response;
+  const text = response.text();
+  return parseJSON<T>(text);
+};
+
 export const analyzeResume = async (resumeText: string): Promise<AnalysisResult> => {
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
     return getMockAnalysis(resumeText);
   }
 
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an expert ATS resume analyzer. Analyze the resume and return JSON with:
-          atsScore (0-100), healthScore (0-100), interviewReadiness (0-100),
-          strengths (array), weaknesses (array), improvements (array),
-          missingKeywords (array), formattingIssues (array),
-          sections (object with structure, summary, skills, experience assessments),
-          summary (brief resume summary text)`,
-        },
-        { role: 'user', content: resumeText },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.3,
-    });
-
-    return parseJSON<AnalysisResult>(response.choices[0].message.content || '{}');
+    return await generateJSON<AnalysisResult>(
+      `You are an expert ATS resume analyzer. Analyze the resume and return JSON with:
+      atsScore (0-100), healthScore (0-100), interviewReadiness (0-100),
+      strengths (array), weaknesses (array), improvements (array),
+      missingKeywords (array), formattingIssues (array),
+      sections (object with structure, summary, skills, experience assessments),
+      summary (brief resume summary text)`,
+      resumeText,
+      0.3
+    );
   } catch {
     return getMockAnalysis(resumeText);
   }
 };
 
 export const analyzeSkillGap = async (resumeText: string, targetRole: string): Promise<SkillGapResult> => {
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
     return getMockSkillGap(targetRole);
   }
 
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `Compare resume against target role "${targetRole}". Return JSON with:
-          current (array of skills they have), missing (array of missing skills),
-          recommended (array of recommended skills to learn), matchPercentage (0-100),
-          skillLevels (array of {skill, level 0-100})`,
-        },
-        { role: 'user', content: resumeText },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.3,
-    });
-
-    return parseJSON<SkillGapResult>(response.choices[0].message.content || '{}');
+    return await generateJSON<SkillGapResult>(
+      `Compare resume against target role "${targetRole}". Return JSON with:
+      current (array of skills they have), missing (array of missing skills),
+      recommended (array of recommended skills to learn), matchPercentage (0-100),
+      skillLevels (array of {skill, level 0-100})`,
+      resumeText,
+      0.3
+    );
   } catch {
     return getMockSkillGap(targetRole);
   }
 };
 
 export const optimizeResume = async (resumeText: string): Promise<OptimizationResult> => {
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
     return getMockOptimization();
   }
 
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `Optimize this resume for ATS. Return JSON with:
-          summary (improved professional summary),
-          experience (array of improved bullet points),
-          skills (array of optimized skills),
-          keywords (array of ATS-friendly keywords)`,
-        },
-        { role: 'user', content: resumeText },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.5,
-    });
-
-    return parseJSON<OptimizationResult>(response.choices[0].message.content || '{}');
+    return await generateJSON<OptimizationResult>(
+      `Optimize this resume for ATS. Return JSON with:
+      summary (improved professional summary),
+      experience (array of improved bullet points),
+      skills (array of optimized skills),
+      keywords (array of ATS-friendly keywords)`,
+      resumeText,
+      0.5
+    );
   } catch {
     return getMockOptimization();
   }
@@ -143,106 +136,70 @@ export const generateInterviewQuestions = async (
   difficulty: 'easy' | 'medium' | 'hard',
   count: number = 5
 ) => {
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
     return getMockInterviewQuestions(difficulty);
   }
 
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `Generate ${count} interview questions based on resume. Difficulty: ${difficulty}.
-          Return JSON with: technical (array of {question, answer, explanation}),
-          behavioral (array of {question, answer, explanation}),
-          hr (array of {question, answer, explanation})`,
-        },
-        { role: 'user', content: resumeText },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.7,
-    });
-
-    return parseJSON(response.choices[0].message.content || '{}');
+    return await generateJSON(
+      `Generate ${count} interview questions based on resume. Difficulty: ${difficulty}.
+      Return JSON with: technical (array of {question, answer, explanation}),
+      behavioral (array of {question, answer, explanation}),
+      hr (array of {question, answer, explanation})`,
+      resumeText,
+      0.7
+    );
   } catch {
     return getMockInterviewQuestions(difficulty);
   }
 };
 
 export const matchJobs = async (resumeText: string): Promise<JobMatchResult> => {
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
     return getMockJobMatches();
   }
 
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `Suggest suitable job roles based on resume. Return JSON with:
-          jobs (array of {title, matchPercentage, salaryRange, requiredSkills (array), description})`,
-        },
-        { role: 'user', content: resumeText },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.5,
-    });
-
-    return parseJSON<JobMatchResult>(response.choices[0].message.content || '{}');
+    return await generateJSON<JobMatchResult>(
+      `Suggest suitable job roles based on resume. Return JSON with:
+      jobs (array of {title, matchPercentage, salaryRange, requiredSkills (array), description})`,
+      resumeText,
+      0.5
+    );
   } catch {
     return getMockJobMatches();
   }
 };
 
 export const generateCoverLetter = async (resumeText: string, jobTitle: string, company: string): Promise<CoverLetterResult> => {
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
     return { coverLetter: `Dear Hiring Manager,\n\nI am writing to express my interest in the ${jobTitle} position at ${company}...\n\nSincerely,\n[Your Name]` };
   }
 
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: 'Generate a professional cover letter. Return JSON with coverLetter field.',
-        },
-        { role: 'user', content: `Resume:\n${resumeText}\n\nJob: ${jobTitle} at ${company}` },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.6,
-    });
-
-    return parseJSON<CoverLetterResult>(response.choices[0].message.content || '{}');
+    return await generateJSON<CoverLetterResult>(
+      'Generate a professional cover letter. Return JSON with coverLetter field.',
+      `Resume:\n${resumeText}\n\nJob: ${jobTitle} at ${company}`,
+      0.6
+    );
   } catch {
     return { coverLetter: `Dear Hiring Manager,\n\nI am writing to express my interest in the ${jobTitle} position at ${company}...\n\nSincerely,\n[Your Name]` };
   }
 };
 
 export const analyzeLinkedIn = async (profileText: string) => {
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
     return getMockLinkedInAnalysis();
   }
 
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `Analyze LinkedIn profile. Return JSON with:
-          score (0-100), strengths (array), weaknesses (array),
-          headlineSuggestion, aboutSuggestion, improvements (array)`,
-        },
-        { role: 'user', content: profileText },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.4,
-    });
-
-    return parseJSON(response.choices[0].message.content || '{}');
+    return await generateJSON(
+      `Analyze LinkedIn profile. Return JSON with:
+      score (0-100), strengths (array), weaknesses (array),
+      headlineSuggestion, aboutSuggestion, improvements (array)`,
+      profileText,
+      0.4
+    );
   } catch {
     return getMockLinkedInAnalysis();
   }
