@@ -54,7 +54,13 @@ app.use((_req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
 });
 
-app.use((err: any, _req, res, _next) => {
+import express, { Request, Response, NextFunction } from "express";
+  app.use((
+  err: any,
+  _req: Request,
+  res: Response,
+  _next: NextFunction
+) => {
   console.error("========== ERROR ==========");
   console.error(err);
   console.error("Message:", err?.message);
