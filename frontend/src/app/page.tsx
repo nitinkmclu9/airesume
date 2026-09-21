@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import Cookies from 'js-cookie';
 import {
   Sparkles, BadgeCheck, Brain, FileText, MessageSquare, Briefcase,
   TrendingUp, ArrowRight, UploadCloud, Zap, Shield, Star,
@@ -32,6 +34,12 @@ const faqs = [
 ];
 
 export default function LandingPage() {
+  const [hasSession, setHasSession] = useState(false);
+
+  useEffect(() => {
+    setHasSession(!!Cookies.get('token'));
+  }, []);
+
   return (
     <div className="min-h-screen gradient-bg">
       <div className="hero-glow fixed inset-0 pointer-events-none" />
@@ -40,10 +48,9 @@ export default function LandingPage() {
       <nav className="fixed top-0 w-full z-50 glass border-b border-white/10">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold">ResumeIQ <span className="text-indigo-400">AI</span></span>
+            <span className="text-xl font-extrabold tracking-tight text-white">
+              NK<span className="text-neutral-400">Stech</span>
+            </span>
           </Link>
           <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">Features</a>
@@ -52,8 +59,14 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            <Link href="/login"><Button variant="ghost" size="sm">Login</Button></Link>
-            <Link href="/register"><Button size="sm">Get Started</Button></Link>
+            {hasSession ? (
+              <Link href="/dashboard"><Button size="sm">Dashboard</Button></Link>
+            ) : (
+              <>
+                <Link href="/login"><Button variant="ghost" size="sm">Login</Button></Link>
+                <Link href="/register"><Button size="sm">Get Started</Button></Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -281,14 +294,13 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 py-12 px-6">
+      <footer className="border-t border-neutral-800 py-12 px-6">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-indigo-400" />
-            <span className="font-bold">ResumeIQ AI</span>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} ResumeIQ AI. All rights reserved.
+          <span className="text-lg font-extrabold tracking-tight text-white">
+            NK<span className="text-neutral-400">Stech</span>
+          </span>
+          <p className="text-sm text-neutral-500">
+            &copy; {new Date().getFullYear()} NKStech. Created by NKStech
           </p>
         </div>
       </footer>

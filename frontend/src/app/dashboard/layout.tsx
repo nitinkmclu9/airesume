@@ -64,10 +64,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex flex-col h-full">
           <div className="p-6 border-b border-white/10">
             <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-lg font-bold">ResumeIQ AI</span>
+              <span className="text-lg font-extrabold tracking-tight text-white">
+                NK<span className="text-neutral-400">Stech</span>
+              </span>
             </Link>
           </div>
 
@@ -144,6 +143,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </motion.div>
           </AnimatePresence>
         </main>
+        <footer className="border-t border-neutral-800 py-4 px-6 text-center">
+          <p className="text-xs text-neutral-600">
+            Created by NKStech
+          </p>
+        </footer>
       </div>
     </div>
   );

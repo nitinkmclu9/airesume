@@ -49,15 +49,23 @@ const uploadToCloudinary = (buffer: Buffer, fileName: string): Promise<{ url: st
   });
 };
 
-const extractText = (buffer: Buffer, mimetype: string): string => {
-  const text = buffer.toString('utf-8');
-  if (mimetype === 'text/plain' || text.length > 100) {
-    return text.substring(0, 15000);
+const extractText = async (buffer: Buffer, mimetype: string): Promise<string> => {
+  try {
+    if (mimetype === 'application/pdf') {
+      const pdf = require('pdf-parse');
+      const data = await pdf(buffer);
+      return data.text.substring(0, 15000);
+    }
+    if (mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      const mammoth = require('mammoth');
+      const data = await mammoth.extractRawText({ buffer });
+      return data.value.substring(0, 15000);
+    }
+    const text = buffer.toString('utf-8').substring(0, 15000);
+    return text || `Resume content uploaded (${mimetype}).`;
+  } catch {
+    return `Resume content uploaded (${mimetype}).`;
   }
-  return `Resume content uploaded (${mimetype}). Professional with experience in software development, 
-  skilled in JavaScript, TypeScript, React, Node.js, and modern web technologies. 
-  Has worked on multiple projects involving full-stack development, API design, and database management.
-  Strong problem-solving abilities and team collaboration skills.`;
 };
 
 router.post('/upload', protect, upload.single('resume'), async (req: AuthRequest, res: Response) => {
@@ -68,7 +76,7 @@ router.post('/upload', protect, upload.single('resume'), async (req: AuthRequest
     }
 
     const { url, publicId } = await uploadToCloudinary(req.file.buffer, req.file.originalname);
-    const extractedText = extractText(req.file.buffer, req.file.mimetype);
+    const extractedText = await extractText(req.file.buffer, req.file.mimetype);
 
     const resume = await Resume.create({
       userId: req.user!._id,

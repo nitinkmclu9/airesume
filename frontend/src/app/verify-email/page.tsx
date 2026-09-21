@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Sparkles, CheckCircle, XCircle } from 'lucide-react';
+import { CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { authAPI } from '@/lib/api';
 
@@ -23,8 +23,12 @@ function VerifyEmailContent() {
   }, [token]);
 
   return (
-    <div className="glass rounded-2xl p-12 text-center max-w-md">
-      <Sparkles className="w-12 h-12 text-indigo-400 mx-auto mb-4" />
+    <div className="border border-neutral-800 rounded-2xl p-12 text-center max-w-md bg-neutral-900/50">
+      <Link href="/" className="inline-flex items-center justify-center mb-6">
+        <span className="text-3xl font-extrabold tracking-tight text-white">
+          NK<span className="text-neutral-400">Stech</span>
+        </span>
+      </Link>
       {status === 'loading' && <p>Verifying your email...</p>}
       {status === 'success' && (
         <>
@@ -48,10 +52,13 @@ function VerifyEmailContent() {
 
 export default function VerifyEmailPage() {
   return (
-    <div className="min-h-screen gradient-bg flex items-center justify-center px-6">
+    <div className="min-h-screen gradient-bg flex flex-col items-center justify-center px-6">
       <Suspense fallback={<div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full" />}>
         <VerifyEmailContent />
       </Suspense>
+      <p className="text-xs text-neutral-600 mt-8">
+        Created by NKStech
+      </p>
     </div>
   );
 }
