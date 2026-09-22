@@ -40,27 +40,33 @@ interface CoverLetterResult {
   coverLetter: string;
 }
 
+
 const GEMINI_KEY =
   process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || '';
 
 const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent';
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent';
+
+const sleep = (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 const parseJSON = <T>(content: string): T => {
-  const cleaned = content.replace(/```json\n?|\n?```/g, '').trim();
+  const cleaned = content
+    .replace(/```json\s*/gi, '')
+    .replace(/```\s*/g, '')
+    .trim();
+
   return JSON.parse(cleaned);
 };
 
 const generateJSON = async <T>(
   systemPrompt: string,
   userContent: string,
-  temperature = 0.3
+  _temperature = 0.3
 ): Promise<T> => {
-  if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
-    throw new Error('No API key configured');
+  if (!GEMINI_KEY) {
+    throw new Error('GEMINI_API_KEY is not configured');
   }
-
-  const url = `${GEMINI_URL}?key=${GEMINI_KEY}`;
 
   const payload = {
     contents: [
@@ -68,67 +74,184 @@ const generateJSON = async <T>(
         role: 'user',
         parts: [
           {
-            text: `${systemPrompt}\n\n${userContent}`,
+            text: `${systemPrompt}
+
+RESUME CONTENT:
+${userContent}`,
           },
         ],
       },
     ],
+    generationConfig: {
+      maxOutputTokens: 2000,
+    },
   };
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
+  const maxRetries = 3;
 
-  if (!response.ok) {
-    const errBody = await response.text();
-    console.error(
-      `Gemini API error ${response.status}: ${errBody.slice(0, 200)}`
-    );
-    throw new Error(`Gemini API error: ${response.status}`);
-  }
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const response = await fetch(GEMINI_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': GEMINI_KEY,
+      },
+      body: JSON.stringify(payload),
+    });
 
-  const data = (await response.json()) as {
-    candidates?: Array<{
-      content?: {
-        parts?: Array<{
-          text?: string;
+    if (response.ok) {
+      const data = (await response.json()) as {
+        candidates?: Array<{
+          content?: {
+            parts?: Array<{
+              text?: string;
+            }>;
+          };
         }>;
       };
-    }>;
-  };
 
-  return parseJSON<T>(
-    data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
-  );
+      const text =
+        data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!text) {
+        throw new Error('Gemini returned an empty response');
+      }
+
+      return parseJSON<T>(text);
+    }
+
+    const errorText = await response.text();
+
+    console.error(
+      `Gemini API error ${response.status}: ${errorText.slice(0, 500)}`
+    );
+
+    if (
+      (response.status === 429 || response.status === 503) &&
+      attempt < maxRetries
+    ) {
+      const delay =
+        attempt === 1 ? 2000 :
+        attempt === 2 ? 5000 :
+        10000;
+
+      console.log(
+        `Gemini ${response.status} error. Retrying in ${delay / 1000} seconds...`
+      );
+
+      await sleep(delay);
+      continue;
+    }
+
+    throw new Error(
+      `Gemini API error ${response.status}: ${errorText}`
+    );
+  }
+
+  throw new Error('Gemini request failed after retries');
 };
 
 export const analyzeResume = async (
   resumeText: string
 ): Promise<AnalysisResult> => {
-  if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
-    return getMockAnalysis(resumeText);
-  }
-
-  try {
-    return await generateJSON<AnalysisResult>(
-      `You are an expert ATS resume analyzer. Analyze the resume and return JSON with:
-      atsScore (0-100), healthScore (0-100), interviewReadiness (0-100),
-      strengths (array), weaknesses (array), improvements (array),
-      missingKeywords (array), formattingIssues (array),
-      sections (object with structure, summary, skills, experience assessments),
-      summary (brief resume summary text)`,
-      resumeText,
-      0.3
+  if (!resumeText || resumeText.trim().length < 50) {
+    throw new Error(
+      'Could not extract enough text from the resume.'
     );
-  } catch {
-    return getMockAnalysis(resumeText);
   }
-};
 
+  return await generateJSON<AnalysisResult>(
+    `You are an expert ATS Resume Analyzer.
+
+Analyze ONLY the resume provided below.
+
+Do NOT use generic demo data.
+Do NOT invent experience, skills, certifications or achievements.
+
+Return ONLY valid JSON in exactly this structure:
+
+{
+  "atsScore": 0,
+  "healthScore": 0,
+  "interviewReadiness": 0,
+  "strengths": [],
+  "weaknesses": [],
+  "improvements": [],
+  "missingKeywords": [],
+  "formattingIssues": [],
+  "sections": {
+    "contactInformation": true,
+    "summary": true,
+    "skills": true,
+    "experience": true,
+    "education": true,
+    "projects": true,
+    "certifications": false
+  },
+  "summary": ""
+}
+
+ATS SCORING:
+
+atsScore:
+- 0-20 = very poor ATS compatibility
+- 21-40 = weak
+- 41-60 = average
+- 61-75 = good
+- 76-90 = strong
+- 91-100 = excellent
+
+Evaluate:
+1. Contact information
+2. Professional summary
+3. Relevant skills
+4. Work experience
+5. Quantifiable achievements
+6. Education
+7. Projects
+8. Certifications
+9. ATS keywords
+10. Formatting/readability
+11. Action verbs
+12. Relevance and consistency
+
+healthScore:
+Evaluate the overall quality, structure and completeness of the resume.
+
+interviewReadiness:
+Evaluate how strongly the resume demonstrates skills, projects, experience and measurable achievements.
+
+strengths:
+Return 3-6 specific strengths based ONLY on this resume.
+
+weaknesses:
+Return 3-6 specific weaknesses based ONLY on this resume.
+
+improvements:
+Return 5-8 practical improvements.
+
+missingKeywords:
+Return relevant ATS keywords that appear to be missing based on the candidate's apparent field/role.
+Do not randomly add unrelated technologies.
+
+formattingIssues:
+Return actual formatting/content issues visible from the extracted resume text.
+
+sections:
+Mark whether important resume sections are present.
+
+summary:
+Write a short factual summary of the candidate based ONLY on the resume.
+
+IMPORTANT:
+The score must be based on the actual resume content.
+Do not return a fixed score.
+Do not return the sample score of 50.
+Do not invent information.`,
+    resumeText,
+    0.3
+  );
+};
 export const analyzeSkillGap = async (
   resumeText: string,
   targetRole: string

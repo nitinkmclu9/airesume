@@ -49,22 +49,96 @@ const uploadToCloudinary = (buffer: Buffer, fileName: string): Promise<{ url: st
   });
 };
 
-const extractText = async (buffer: Buffer, mimetype: string): Promise<string> => {
+const extractText = async (
+  buffer: Buffer,
+  mimetype: string
+): Promise<string> => {
   try {
+    // PDF
     if (mimetype === 'application/pdf') {
-      const pdf = require('pdf-parse');
-      const data = await pdf(buffer);
-      return data.text.substring(0, 15000);
+      const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+
+      const loadingTask = pdfjsLib.getDocument({
+        data: new Uint8Array(buffer),
+      });
+
+      const pdf = await loadingTask.promise;
+
+      let fullText = '';
+
+      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+        const page = await pdf.getPage(pageNumber);
+
+        const content = await page.getTextContent();
+
+        const pageText = content.items
+          .map((item: any) => item.str || '')
+          .join(' ');
+
+        fullText += pageText + '\n';
+      }
+
+      const text = fullText
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      console.log(`📄 PDF pages: ${pdf.numPages}`);
+      console.log(`📄 PDF text extracted: ${text.length} characters`);
+
+      if (!text) {
+        throw new Error(
+          'This PDF is scanned/image based and contains no selectable text.'
+        );
+      }
+
+      return text.substring(0, 15000);
     }
-    if (mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+
+    // DOCX
+    if (
+      mimetype ===
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ) {
       const mammoth = require('mammoth');
+
       const data = await mammoth.extractRawText({ buffer });
-      return data.value.substring(0, 15000);
+
+      const text = (data.value || '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      console.log(`📄 DOCX text extracted: ${text.length} characters`);
+
+      if (!text) {
+        throw new Error('DOCX contains no extractable text.');
+      }
+
+      return text.substring(0, 15000);
     }
-    const text = buffer.toString('utf-8').substring(0, 15000);
-    return text || `Resume content uploaded (${mimetype}).`;
-  } catch {
-    return `Resume content uploaded (${mimetype}).`;
+
+    // TXT
+    if (mimetype === 'text/plain') {
+      const text = buffer
+        .toString('utf-8')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      console.log(`📄 TXT text extracted: ${text.length} characters`);
+
+      if (!text) {
+        throw new Error('TXT file is empty.');
+      }
+
+      return text.substring(0, 15000);
+    }
+
+    throw new Error('Unsupported file type.');
+  } catch (error) {
+    console.error('❌ Resume text extraction failed:', error);
+
+    throw new Error(
+      'Could not extract text from this resume. Please upload a text-based PDF or DOCX file.'
+    );
   }
 };
 

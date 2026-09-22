@@ -9,6 +9,7 @@ import authRoutes from './routes/auth';
 import resumeRoutes from './routes/resume';
 import reportRoutes from './routes/reports';
 import adminRoutes from './routes/admin';
+import chatRoutes from './routes/chat';
 import { apiLimiter } from './middleware/rateLimiter';
 
 dotenv.config();
@@ -59,6 +60,7 @@ app.get('/api/health', (_req, res) => {
     success: true,
     message: 'ResumeIQ AI API is running',
     version: '1.0.0',
+    geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
   });
 });
 
@@ -77,6 +79,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/resumes', resumeRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/chat', chatRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({
