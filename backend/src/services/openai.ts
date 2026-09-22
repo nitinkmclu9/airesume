@@ -45,7 +45,7 @@ const GEMINI_KEY =
   process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || '';
 
 const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent';
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent';
 
 const sleep = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms));
