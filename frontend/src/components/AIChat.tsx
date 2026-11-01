@@ -1,6 +1,8 @@
+
 "use client";
 
 import { useState } from "react";
+import Cookies from "js-cookie";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
@@ -44,10 +46,17 @@ export default function AIChat() {
     setLoading(true);
 
     try {
+      const token = Cookies.get("token");
+
+      if (!token) {
+        throw new Error("Please log in again to use the AI assistant.");
+      }
+
       const response = await fetch(`${API_URL}/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           message: userMessage,
@@ -70,11 +79,16 @@ export default function AIChat() {
     } catch (error) {
       console.error("AI Chat Error:", error);
 
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+
       setMessages((prev) => [
         ...prev,
         {
           role: "ai",
-          text: "Sorry, I'm unable to respond right now. Please try again.",
+          text: errorMessage === "Failed to fetch"
+            ? "Server se connection nahi ho raha. Please try again."
+            : errorMessage,
         },
       ]);
     } finally {
@@ -84,7 +98,6 @@ export default function AIChat() {
 
   return (
     <>
-      {/* Floating AI Button */}
       {!open && (
         <button
           onClick={() => setOpen(true)}
@@ -95,27 +108,18 @@ export default function AIChat() {
         </button>
       )}
 
-      {/* Chat Window */}
       {open && (
         <div className="fixed bottom-6 right-6 z-50 flex h-[650px] w-[390px] max-w-[calc(100vw-32px)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#171733] shadow-2xl">
-          
-          {/* Header */}
           <div className="flex items-center justify-between border-b border-white/10 bg-gradient-to-r from-[#282052] to-[#35206b] px-5 py-4">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-xl shadow-lg">
                 ✨
               </div>
-
               <div>
-                <h3 className="font-bold text-white">
-                  ResumeIQ AI
-                </h3>
-                <p className="text-xs text-purple-200">
-                  Your Career Assistant
-                </p>
+                <h3 className="font-bold text-white">ResumeIQ AI</h3>
+                <p className="text-xs text-purple-200">Your Career Assistant</p>
               </div>
             </div>
-
             <button
               onClick={() => setOpen(false)}
               className="rounded-lg px-3 py-2 text-xl text-gray-300 transition hover:bg-white/10 hover:text-white"
@@ -124,15 +128,12 @@ export default function AIChat() {
             </button>
           </div>
 
-          {/* Messages */}
           <div className="flex-1 space-y-4 overflow-y-auto p-4">
             {messages.map((msg, index) => (
               <div
                 key={index}
                 className={`flex ${
-                  msg.role === "user"
-                    ? "justify-end"
-                    : "justify-start"
+                  msg.role === "user" ? "justify-end" : "justify-start"
                 }`}
               >
                 <div
@@ -150,21 +151,15 @@ export default function AIChat() {
             {loading && (
               <div className="flex justify-start">
                 <div className="rounded-2xl rounded-bl-md border border-white/10 bg-[#242447] px-4 py-3 text-sm text-gray-300">
-                  <span className="animate-pulse">
-                    AI is thinking...
-                  </span>
+                  <span className="animate-pulse">AI is thinking...</span>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Suggestions */}
           {messages.length === 1 && (
             <div className="border-t border-white/10 px-4 py-3">
-              <p className="mb-2 text-xs text-gray-400">
-                Try asking:
-              </p>
-
+              <p className="mb-2 text-xs text-gray-400">Try asking:</p>
               <div className="flex flex-wrap gap-2">
                 {suggestions.map((item) => (
                   <button
@@ -179,21 +174,17 @@ export default function AIChat() {
             </div>
           )}
 
-          {/* Input */}
           <div className="border-t border-white/10 bg-[#14142c] p-3">
             <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#202040] px-3 py-2">
               <input
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    sendMessage();
-                  }
+                  if (e.key === "Enter") sendMessage();
                 }}
                 placeholder="Ask your career question..."
                 className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-500"
               />
-
               <button
                 onClick={() => sendMessage()}
                 disabled={!message.trim() || loading}
