@@ -86,7 +86,10 @@ async function callGemini(
   }
 }
 
-export async function chatWithAI(message: string): Promise<string> {
+export async function chatWithAI(
+  message: string,
+  resumeText: string = ""
+): Promise<string> {
   if (!GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY is not configured");
   }
