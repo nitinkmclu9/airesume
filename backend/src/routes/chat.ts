@@ -27,6 +27,15 @@ router.post(
 
       const resumeText = resume?.extractedText || "";
 
+console.log("Chat Debug:", {
+  userId: req.user?._id?.toString(),
+  resumeFound: Boolean(resume),
+  resumeFileName: resume?.fileName,
+  extractedTextLength: resumeText.length,
+  extractedTextPreview: resumeText.slice(0, 300),
+});
+
+
       const reply = await chatWithAI(message, resumeText);
 
       return res.status(200).json({
